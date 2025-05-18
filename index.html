@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Süper Balon Patlatma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            touch-action: manipulation;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            height: 100vh;
+        }
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            user-select: none;
+            z-index: 5;
+            transition: transform 0.2s ease;
+        }
+        .bubble:hover {
+            transform: scale(1.1);
+        }
+        .normal-bubble {
+            animation: float 8s infinite ease-in-out;
+        }
+        .special-bubble {
+            animation: float-special 6s infinite ease-in-out;
+            box-shadow: 0 0 20px 5px rgba(255, 255, 255, 0.7);
+        }
+        .bomb-bubble {
+            animation: float-bomb 5s infinite ease-in-out;
+            box-shadow: 0 0 15px 3px rgba(255, 0, 0, 0.5);
+        }
+        .frozen-bubble {
+            animation: float 12s infinite ease-in-out;
+            filter: drop-shadow(0 0 8px rgba(0, 191, 255, 0.8));
+        }
+        .golden-bubble {
+            background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+            animation: float-golden 7s infinite ease-in-out;
+            box-shadow: 0 0 25px 8px rgba(255, 215, 0, 0.6);
+        }
+        .pop-animation {
+            animation: pop 0.3s ease-out forwards;
+        }
+        .freeze-animation {
+            animation: freeze 0.5s ease-out forwards;
+        }
+        .bomb-animation {
+            animation: explode 0.5s ease-out forwards;
+        }
+        .powerup {
+            position: absolute;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8);
+            cursor: pointer;
+            z-index: 10;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        .powerup:hover {
+            transform: scale(1.2);
+        }
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes float-special {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-30px) rotate(8deg) scale(1.05); }
+        }
+        @keyframes float-bomb {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(-5deg); }
+        }
+        @keyframes float-golden {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-25px) rotate(10deg) scale(1.1); }
+        }
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.7; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        @keyframes freeze {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.2); filter: brightness(1.5) hue-rotate(180deg); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        @keyframes explode {
+            0% { transform: scale(1); }
+            50% { transform: scale(2); opacity: 0.8; background-color: #ff4500; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        @keyframes particleAnimation {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+        }
+        .timer-bar {
+            height: 10px;
+            background: #10b981;
+            width: 100%;
+            transition: width 0.1s linear;
+            border-radius: 5px;
+        }
+        .combo-text {
+            position: absolute;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 5px rgba(0,0,0,0.7);
+            pointer-events: none;
+            z-index: 20;
+        }
+        .level-up {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 50;
+            animation: levelUp 2s forwards;
+        }
+        @keyframes levelUp {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+        .freeze-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(135, 206, 250, 0.3);
+            pointer-events: none;
+            z-index: 4;
+        }
+        .multiplier-display {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            z-index: 15;
+        }
+        .achievement {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: achievementShow 4s forwards;
+        }
+        @keyframes achievementShow {
+            0% { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            10% { transform: translateX(-50%) translateY(0); opacity: 1; }
+            90% { transform: translateX(-50%) translateY(0); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(100px); opacity: 0; }
+        }
+        .scoreboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .scoreboard-table th, .scoreboard-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .scoreboard-table th {
+            background-color: rgba(0,0,0,0.3);
+            color: white;
+            font-weight: bold;
+        }
+        .scoreboard-table tr:nth-child(even) {
+            background-color: rgba(255,255,255,0.05);
+        }
+        .scoreboard-table tr:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .current-user {
+            background-color: rgba(255,215,0,0.2) !important;
+            font-weight: bold;
+        }
+        .username-display {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            z-index: 15;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 5px 5px 0 0;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: rgba(255,255,255,0.2);
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 0 5px 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="select-none">
+    <div class="fixed top-0 left-0 w-full p-4 z-50">
+        <div class="bg-white bg-opacity-90 rounded-xl p-4 shadow-lg">
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-lg font-bold text-purple-800">Puan: <span id="score">0</span></div>
+                <div class="text-lg font-bold text-purple-800">Seviye: <span id="level">1</span></div>
+                <div class="text-lg font-bold text-purple-800">Süre: <span id="time">60</span>s</div>
+            </div>
+            <div class="bg-gray-200 rounded-full h-2.5">
+                <div class="timer-bar" id="timer-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="username-display" class="username-display hidden">
+        Oyuncu: <span id="current-username">Misafir</span>
+    </div>
+
+    <div id="multiplier-display" class="multiplier-display hidden">
+        x<span id="multiplier-value">1</span>
+    </div>
+
+    <div id="game-container" class="w-full h-full"></div>
+
+    <div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-700 flex flex-col items-center justify-center z-50 p-6">
+        <div class="text-5xl font-bold text-white mb-4">Süper Balon Patlatma</div>
+        <div class="text-xl text-white mb-8 text-center">Kullanıcı adınızı girin ve oyuna başlayın!</div>
+        
+        <div class="bg-white bg-opacity-20 rounded-xl p-6 mb-8 max-w-md w-full">
+            <div class="mb-4">
+                <label for="username-input" class="block text-white font-bold mb-2">Kullanıcı Adı:</label>
+                <input type="text" id="username-input" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Kullanıcı adınızı girin">
+            </div>
+            <button id="login-button" class="w-full bg-white text-purple-700 font-bold py-3 px-8 rounded-full text-xl shadow-lg hover:bg-gray-100 transform hover:scale-105 transition-all">
+                GİRİŞ YAP
+            </button>
+        </div>
+        
+        <div class="text-sm text-white opacity-70">
+            Not: Kullanıcı adınız ve skorlarınız sadece bu cihazda saklanacaktır.
+        </div>
+    </div>
+
+    <div id="start-screen" class="fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-700 flex flex-col items-center justify-center z-50 p-6 hidden">
+        <div class="text-5xl font-bold text-white mb-4">Süper Balon Patlatma</div>
+        <div class="text-xl text-white mb-8 text-center">Balonları patlatarak puan kazanın ve seviyeleri geçin!</div>
+        
+        <div class="bg-white bg-opacity-20 rounded-xl p-6 mb-8 max-w-md">
+            <div class="text-2xl font-bold text-white mb-4">Özel Balonlar:</div>
+            <div class="flex items-center mb-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 mr-3"></div>
+                <div class="text-white">Altın Balon - 3x puan!</div>
+            </div>
+            <div class="flex items-center mb-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-300 to-blue-600 mr-3"></div>
+                <div class="text-white">Dondurma Balonu - Tüm balonları yavaşlatır!</div>
+            </div>
+            <div class="flex items-center mb-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-800 mr-3"></div>
+                <div class="text-white">Bomba Balon - Dikkat! Patlatırsan puan kaybedersin!</div>
+            </div>
+            <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-300 to-purple-600 mr-3"></div>
+                <div class="text-white">Sihirli Balon - Rastgele güçlendirme!</div>
+            </div>
+        </div>
+        
+        <div class="text-xl text-white mb-4 text-center">
+            <strong>YENİ:</strong> Artık balonların üzerine geldiğinizde otomatik patlarlar!
+        </div>
+        
+        <button id="start-button" class="bg-white text-purple-700 font-bold py-3 px-8 rounded-full text-xl shadow-lg hover:bg-gray-100 transform hover:scale-105 transition-all">
+            BAŞLA
+        </button>
+        
+        <button id="show-scoreboard-button" class="mt-4 bg-transparent border-2 border-white text-white font-bold py-2 px-6 rounded-full text-lg hover:bg-white hover:bg-opacity-10 transform hover:scale-105 transition-all">
+            SKOR TABLOSU
+        </button>
+    </div>
+
+    <div id="scoreboard-screen" class="fixed inset-0 bg-gradient-to-br from-indigo-500 to-purple-700 flex flex-col items-center justify-center z-50 p-6 hidden">
+        <div class="text-4xl font-bold text-white mb-6">Skor Tablosu</div>
+        
+        <div class="bg-black bg-opacity-50 rounded-xl p-4 mb-8 max-w-2xl w-full">
+            <div class="flex mb-4">
+                <button class="tab-button active" data-tab="top-scores">En Yüksek Skorlar</button>
+                <button class="tab-button" data-tab="my-scores">Skorlarım</button>
+            </div>
+            
+            <div id="top-scores" class="tab-content active">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Kullanıcı</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-scores-table">
+                        <!-- Skorlar JavaScript ile doldurulacak -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="my-scores" class="tab-content">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my-scores-table">
+                        <!-- Skorlar JavaScript ile doldurulacak -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <button id="back-to-menu-button" class="bg-white text-purple-700 font-bold py-3 px-8 rounded-full text-xl shadow-lg hover:bg-gray-100 transform hover:scale-105 transition-all">
+            GERİ DÖN
+        </button>
+    </div>
+
+    <div id="game-over" class="game-over hidden">
+        <div class="text-5xl font-bold mb-4">Oyun Bitti!</div>
+        <div class="text-2xl mb-2">Puanınız: <span id="final-score">0</span></div>
+        <div class="text-xl mb-8">En Yüksek Seviye: <span id="final-level">1</span></div>
+        
+        <div class="bg-white bg-opacity-20 rounded-xl p-4 mb-8 max-w-md">
+            <div class="text-xl font-bold text-white mb-2">İstatistikler:</div>
+            <div class="grid grid-cols-2 gap-2 text-white">
+                <div>Patlatılan Balonlar:</div>
+                <div id="stats-bubbles">0</div>
+                <div>Kombo Sayısı:</div>
+                <div id="stats-combos">0</div>
+                <div>En Yüksek Kombo:</div>
+                <div id="stats-highest-combo">0</div>
+                <div>Kullanılan Güçlendirmeler:</div>
+                <div id="stats-powerups">0</div>
+            </div>
+        </div>
+        
+        <div class="flex space-x-4">
+            <button id="restart-button" class="bg-white text-purple-700 font-bold py-3 px-8 rounded-full text-xl shadow-lg hover:bg-gray-100 transform hover:scale-105 transition-all">
+                TEKRAR OYNA
+            </button>
+            
+            <button id="view-scoreboard-button" class="bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-full text-xl hover:bg-white hover:bg-opacity-10 transform hover:scale-105 transition-all">
+                SKOR TABLOSU
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const timeElement = document.getElementById('time');
+        const timerBar = document.getElementById('timer-bar');
+        const loginScreen = document.getElementById('login-screen');
+        const loginButton = document.getElementById('login-button');
+        const usernameInput = document.getElementById('username-input');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const gameOverScreen = document.getElementById('game-over');
+        const restartButton = document.getElementById('restart-button');
+        const finalScoreElement = document.getElementById('final-score');
+        const finalLevelElement = document.getElementById('final-level');
+        const multiplierDisplay = document.getElementById('multiplier-display');
+        const multiplierValue = document.getElementById('multiplier-value');
+        const usernameDisplay = document.getElementById('username-display');
+        const currentUsername = document.getElementById('current-username');
+        const showScoreboardButton = document.getElementById('show-scoreboard-button');
+        const viewScoreboardButton = document.getElementById('view-scoreboard-button');
+        const scoreboardScreen = document.getElementById('scoreboard-screen');
+        const backToMenuButton = document.getElementById('back-to-menu-button');
+        const topScoresTable = document.getElementById('top-scores-table');
+        const myScoresTable = document.getElementById('my-scores-table');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Stats elements
+        const statsBubbles = document.getElementById('stats-bubbles');
+        const statsCombos = document.getElementById('stats-combos');
+        const statsHighestCombo = document.getElementById('stats-highest-combo');
+        const statsPowerups = document.getElementById('stats-powerups');
+
+        let score = 0;
+        let level = 1;
+        let timeLeft = 60;
+        let bubbles = [];
+        let gameInterval;
+        let timerInterval;
+        let isGameRunning = false;
+        let bubbleSpeed = 1;
+        let bubbleFrequency = 800;
+        let pointMultiplier = 1;
+        let comboCount = 0;
+        let comboTimer = null;
+        let isFrozen = false;
+        let freezeTimeout = null;
+        let username = "Misafir";
+        
+        // Game statistics
+        let totalBubblesPopped = 0;
+        let totalCombos = 0;
+        let highestCombo = 0;
+        let powerupsUsed = 0;
+
+        const colors = [
+            '#f43f5e', '#ec4899', '#d946ef', '#a855f7', 
+            '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', 
+            '#06b6d4', '#14b8a6', '#10b981', '#84cc16'
+        ];
+
+        const emojis = {
+            normal: ['💎', '⭐', '🔥', '🎯', '🚀', '✨', '💫', '🌟'],
+            special: ['🌈', '🦄', '🌠', '🔮'],
+            bomb: ['💣'],
+            frozen: ['❄️', '🧊'],
+            golden: ['👑', '💰', '🏆']
+        };
+
+        const powerups = [
+            { type: 'freeze', emoji: '❄️', color: '#3b82f6', effect: activateFreezeEffect },
+            { type: 'multiplier', emoji: '2️⃣', color: '#8b5cf6', effect: activateMultiplier },
+            { type: 'extraTime', emoji: '⏱️', color: '#10b981', effect: addExtraTime },
+            { type: 'clearBombs', emoji: '🧨', color: '#f43f5e', effect: clearAllBombs }
+        ];
+
+        const achievements = [
+            { id: 'first-combo', title: 'İlk Kombo!', description: '3 balonu hızlıca patlat', emoji: '🔥', unlocked: false },
+            { id: 'level-5', title: 'Uzman!', description: 'Seviye 5\'e ulaş', emoji: '🏆', unlocked: false },
+            { id: 'combo-master', title: 'Kombo Ustası!', description: '10 kombo yap', emoji: '⚡', unlocked: false },
+            { id: 'golden-hunter', title: 'Altın Avcısı!', description: '5 altın balon patlat', emoji: '💰', unlocked: false }
+        ];
+
+        let stats = {
+            goldenBubblePopped: 0
+        };
+
+        // Load high scores from local storage
+        function loadHighScores() {
+            const highScores = localStorage.getItem('bubbleGameHighScores');
+            return highScores ? JSON.parse(highScores) : [];
+        }
+
+        // Save high score to local storage
+        function saveHighScore(score, level) {
+            const highScores = loadHighScores();
+            
+            // Add new score
+            highScores.push({
+                username: username,
+                score: score,
+                level: level,
+                date: new Date().toISOString(),
+                bubbles: totalBubblesPopped,
+                combos: totalCombos,
+                highestCombo: highestCombo,
+                powerups: powerupsUsed
+            });
+            
+            // Sort by score (highest first)
+            highScores.sort((a, b) => b.score - a.score);
+            
+            // Keep only top 100 scores
+            const topScores = highScores.slice(0, 100);
+            
+            // Save to local storage
+            localStorage.setItem('bubbleGameHighScores', JSON.stringify(topScores));
+        }
+
+        // Update scoreboard display
+        function updateScoreboard() {
+            const highScores = loadHighScores();
+            
+            // Clear tables
+            topScoresTable.innerHTML = '';
+            myScoresTable.innerHTML = '';
+            
+            // Fill top scores table (top 10)
+            const topScores = highScores.slice(0, 10);
+            topScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                if (score.username === username) {
+                    row.classList.add('current-user');
+                }
+                
+                const date = new Date(score.date);
+                const formattedDate = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${score.username}</td>
+                    <td>${score.score}</td>
+                    <td>${score.level}</td>
+                    <td>${formattedDate}</td>
+                `;
+                topScoresTable.appendChild(row);
+            });
+            
+            // Fill my scores table
+            const myScores = highScores.filter(score => score.username === username);
+            myScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                
+                const date = new Date(score.date);
+                const formattedDate = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${score.score}</td>
+                    <td>${score.level}</td>
+                    <td>${formattedDate}</td>
+                `;
+                myScoresTable.appendChild(row);
+            });
+            
+            // Show message if no scores
+            if (myScores.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center py-4">Henüz hiç skor kaydetmediniz.</td>
+                `;
+                myScoresTable.appendChild(row);
+            }
+            
+            if (topScores.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="5" class="text-center py-4">Henüz hiç skor kaydedilmemiş.</td>
+                `;
+                topScoresTable.appendChild(row);
+            }
+        }
+
+        function getRandomNumber(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function createBubble() {
+            if (!isGameRunning) return;
+
+            const size = getRandomNumber(40, 90);
+            const x = getRandomNumber(0, window.innerWidth - size);
+            const y = window.innerHeight;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+            
+            // Determine bubble type based on level and randomness
+            let bubbleType = 'normal';
+            let points = Math.floor(100 / size * 10);
+            let emoji = '';
+            
+            const rand = Math.random();
+            
+            if (rand < 0.01 * level && level >= 3) {
+                bubbleType = 'golden';
+                points *= 3;
+                emoji = emojis.golden[getRandomNumber(0, emojis.golden.length - 1)];
+                bubble.classList.add('golden-bubble');
+            } else if (rand < 0.03 * level && level >= 2) {
+                bubbleType = 'special';
+                points *= 2;
+                emoji = emojis.special[getRandomNumber(0, emojis.special.length - 1)];
+                bubble.classList.add('special-bubble');
+                
+                const specialColor = colors[getRandomNumber(0, colors.length - 1)];
+                bubble.style.background = `radial-gradient(circle at 30% 30%, ${specialColor}, ${adjustColor(specialColor, -30)})`;
+            } else if (rand < 0.05 * level && level >= 4) {
+                bubbleType = 'bomb';
+                points = -50;
+                emoji = emojis.bomb[0];
+                bubble.classList.add('bomb-bubble');
+                bubble.style.background = 'radial-gradient(circle at 30% 30%, #ff4500, #8b0000)';
+            } else if (rand < 0.04 * level && level >= 3) {
+                bubbleType = 'frozen';
+                points *= 1.5;
+                emoji = emojis.frozen[getRandomNumber(0, emojis.frozen.length - 1)];
+                bubble.classList.add('frozen-bubble');
+                bubble.style.background = 'radial-gradient(circle at 30% 30%, #add8e6, #1e90ff)';
+            } else {
+                bubbleType = 'normal';
+                emoji = emojis.normal[getRandomNumber(0, emojis.normal.length - 1)];
+                bubble.classList.add('normal-bubble');
+                
+                const colorIndex = getRandomNumber(0, colors.length - 1);
+                bubble.style.background = `radial-gradient(circle at 30% 30%, ${colors[colorIndex]}, ${adjustColor(colors[colorIndex], -30)})`;
+            }
+            
+            bubble.innerHTML = `<div>${emoji}</div>`;
+            bubble.dataset.points = points;
+            bubble.dataset.type = bubbleType;
+            
+            // Use mouseover instead of click
+            bubble.addEventListener('mouseover', popBubble);
+            
+            gameContainer.appendChild(bubble);
+            
+            const currentSpeed = isFrozen ? bubbleSpeed * 0.5 : bubbleSpeed;
+            
+            bubbles.push({
+                element: bubble,
+                x,
+                y,
+                speed: currentSpeed * getRandomNumber(8, 12) / 10,
+                size,
+                type: bubbleType
+            });
+            
+            // Animate bubble rising
+            const duration = getRandomNumber(4, 8) / currentSpeed;
+            bubble.style.transition = `top ${duration}s linear`;
+            setTimeout(() => {
+                if (bubble.parentNode) {
+                    bubble.style.top = `-${size}px`;
+                }
+            }, 10);
+            
+            // Remove bubble after it's off screen
+            setTimeout(() => {
+                if (bubble.parentNode) {
+                    gameContainer.removeChild(bubble);
+                    bubbles = bubbles.filter(b => b.element !== bubble);
+                }
+            }, duration * 1000);
+        }
+
+        function popBubble(event) {
+            const bubble = event.currentTarget;
+            const points = parseInt(bubble.dataset.points);
+            const bubbleType = bubble.dataset.type;
+            
+            // Remove event listener to prevent multiple triggers
+            bubble.removeEventListener('mouseover', popBubble);
+            
+            // Handle different bubble types
+            if (bubbleType === 'bomb') {
+                bubble.classList.add('bomb-animation');
+                createExplosionEffect(bubble);
+                
+                // Shake screen effect
+                gameContainer.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    gameContainer.style.animation = '';
+                }, 500);
+            } else if (bubbleType === 'frozen') {
+                bubble.classList.add('freeze-animation');
+                activateFreezeEffect();
+            } else if (bubbleType === 'special') {
+                bubble.classList.add('pop-animation');
+                
+                // Random chance to spawn a powerup
+                if (Math.random() < 0.7) {
+                    createPowerup(
+                        parseInt(bubble.style.left) + parseInt(bubble.style.width) / 2, 
+                        parseInt(bubble.style.top) + parseInt(bubble.style.height) / 2
+                    );
+                }
+            } else if (bubbleType === 'golden') {
+                bubble.classList.add('pop-animation');
+                createGoldenEffect(bubble);
+                stats.goldenBubblePopped++;
+                
+                // Check for golden hunter achievement
+                if (stats.goldenBubblePopped >= 5 && !achievements.find(a => a.id === 'golden-hunter').unlocked) {
+                    unlockAchievement('golden-hunter');
+                }
+            } else {
+                bubble.classList.add('pop-animation');
+            }
+            
+            // Create particle effects
+            createParticleEffect(bubble);
+            
+            // Update combo
+            updateCombo();
+            
+            // Update score
+            const finalPoints = points * pointMultiplier;
+            updateScore(finalPoints);
+            
+            // Show points animation
+            showPointsAnimation(bubble, finalPoints);
+            
+            // Update stats
+            totalBubblesPopped++;
+            
+            // Remove bubble after animation
+            setTimeout(() => {
+                if (bubble.parentNode) {
+                    gameContainer.removeChild(bubble);
+                    bubbles = bubbles.filter(b => b.element !== bubble);
+                }
+            }, 300);
+        }
+
+        function showPointsAnimation(bubble, points) {
+            const pointsDisplay = document.createElement('div');
+            pointsDisplay.textContent = points > 0 ? `+${points}` : points;
+            pointsDisplay.style.position = 'absolute';
+            pointsDisplay.style.left = `${bubble.offsetLeft + bubble.offsetWidth / 2}px`;
+            pointsDisplay.style.top = `${bubble.offsetTop}px`;
+            pointsDisplay.style.color = points > 0 ? 'white' : '#ff4500';
+            pointsDisplay.style.fontWeight = 'bold';
+            pointsDisplay.style.fontSize = '24px';
+            pointsDisplay.style.pointerEvents = 'none';
+            pointsDisplay.style.zIndex = '10';
+            pointsDisplay.style.textShadow = '0 0 5px rgba(0,0,0,0.5)';
+            gameContainer.appendChild(pointsDisplay);
+            
+            // Animate points display
+            pointsDisplay.animate([
+                { transform: 'translateY(0) scale(1)', opacity: 1 },
+                { transform: 'translateY(-50px) scale(1.2)', opacity: 0 }
+            ], {
+                duration: 1000,
+                easing: 'ease-out'
+            }).onfinish = () => {
+                if (pointsDisplay.parentNode) {
+                    gameContainer.removeChild(pointsDisplay);
+                }
+            };
+        }
+
+        function createParticleEffect(bubble) {
+            const bubbleRect = bubble.getBoundingClientRect();
+            const centerX = bubbleRect.left + bubbleRect.width / 2;
+            const centerY = bubbleRect.top + bubbleRect.height / 2;
+            const bubbleType = bubble.dataset.type;
+            
+            const particleCount = bubbleType === 'golden' ? 30 : 15;
+            const particleColors = bubbleType === 'golden' 
+                ? ['#ffd700', '#ffdf00', '#f0e68c', '#ffff00'] 
+                : (bubbleType === 'bomb' 
+                    ? ['#ff4500', '#ff6347', '#ff8c00', '#ffa500'] 
+                    : ['#ffffff', '#f0f0f0', '#e0e0e0', '#d0d0d0']);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = `${centerX}px`;
+                particle.style.top = `${centerY}px`;
+                particle.style.backgroundColor = particleColors[Math.floor(Math.random() * particleColors.length)];
+                
+                // Random direction
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 100 + 50;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+                
+                gameContainer.appendChild(particle);
+                
+                particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 1000,
+                    easing: 'ease-out'
+                }).onfinish = () => {
+                    if (particle.parentNode) {
+                        gameContainer.removeChild(particle);
+                    }
+                };
+            }
+        }
+
+        function createGoldenEffect(bubble) {
+            const bubbleRect = bubble.getBoundingClientRect();
+            const centerX = bubbleRect.left + bubbleRect.width / 2;
+            const centerY = bubbleRect.top + bubbleRect.height / 2;
+            
+            const goldenEffect = document.createElement('div');
+            goldenEffect.style.position = 'absolute';
+            goldenEffect.style.left = `${centerX}px`;
+            goldenEffect.style.top = `${centerY}px`;
+            goldenEffect.style.width = '0';
+            goldenEffect.style.height = '0';
+            goldenEffect.style.borderRadius = '50%';
+            goldenEffect.style.backgroundColor = 'rgba(255, 215, 0, 0.3)';
+            goldenEffect.style.transform = 'translate(-50%, -50%)';
+            goldenEffect.style.zIndex = '4';
+            goldenEffect.style.pointerEvents = 'none';
+            
+            gameContainer.appendChild(goldenEffect);
+            
+            goldenEffect.animate([
+                { width: '0', height: '0', opacity: 1 },
+                { width: '300px', height: '300px', opacity: 0 }
+            ], {
+                duration: 800,
+                easing: 'ease-out'
+            }).onfinish = () => {
+                if (goldenEffect.parentNode) {
+                    gameContainer.removeChild(goldenEffect);
+                }
+            };
+        }
+
+        function createExplosionEffect(bubble) {
+            const bubbleRect = bubble.getBoundingClientRect();
+            const centerX = bubbleRect.left + bubbleRect.width / 2;
+            const centerY = bubbleRect.top + bubbleRect.height / 2;
+            
+            const explosionEffect = document.createElement('div');
+            explosionEffect.style.position = 'absolute';
+            explosionEffect.style.left = `${centerX}px`;
+            explosionEffect.style.top = `${centerY}px`;
+            explosionEffect.style.width = '0';
+            explosionEffect.style.height = '0';
+            explosionEffect.style.borderRadius = '50%';
+            explosionEffect.style.background = 'radial-gradient(circle, rgba(255,69,0,0.8) 0%, rgba(255,165,0,0.4) 70%, rgba(255,165,0,0) 100%)';
+            explosionEffect.style.transform = 'translate(-50%, -50%)';
+            explosionEffect.style.zIndex = '4';
+            explosionEffect.style.pointerEvents = 'none';
+            
+            gameContainer.appendChild(explosionEffect);
+            
+            explosionEffect.animate([
+                { width: '0', height: '0', opacity: 1 },
+                { width: '200px', height: '200px', opacity: 0 }
+            ], {
+                duration: 500,
+                easing: 'ease-out'
+            }).onfinish = () => {
+                if (explosionEffect.parentNode) {
+                    gameContainer.removeChild(explosionEffect);
+                }
+            };
+        }
+
+        function createPowerup(x, y) {
+            const powerup = powerups[Math.floor(Math.random() * powerups.length)];
+            
+            const powerupElement = document.createElement('div');
+            powerupElement.className = 'powerup';
+            powerupElement.style.left = `${x - 25}px`;
+            powerupElement.style.top = `${y - 25}px`;
+            powerupElement.style.backgroundColor = powerup.color;
+            powerupElement.innerHTML = powerup.emoji;
+            powerupElement.dataset.type = powerup.type;
+            
+            // Use mouseover instead of click
+            powerupElement.addEventListener('mouseover', collectPowerup);
+            
+            gameContainer.appendChild(powerupElement);
+            
+            // Remove powerup after some time if not collected
+            setTimeout(() => {
+                if (powerupElement.parentNode) {
+                    powerupElement.animate([
+                        { opacity: 1, transform: 'scale(1)' },
+                        { opacity: 0, transform: 'scale(0)' }
+                    ], {
+                        duration: 300,
+                        easing: 'ease-out'
+                    }).onfinish = () => {
+                        if (powerupElement.parentNode) {
+                            gameContainer.removeChild(powerupElement);
+                        }
+                    };
+                }
+            }, 5000);
+        }
+
+        function collectPowerup(event) {
+            const powerupElement = event.currentTarget;
+            const powerupType = powerupElement.dataset.type;
+            
+            // Find the powerup in our list
+            const powerup = powerups.find(p => p.type === powerupType);
+            
+            if (powerup) {
+                powerup.effect();
+                powerupsUsed++;
+                
+                // Show powerup collection animation
+                powerupElement.animate([
+                    { transform: 'scale(1)', opacity: 1 },
+                    { transform: 'scale(1.5)', opacity: 0 }
+                ], {
+                    duration: 300,
+                    easing: 'ease-out'
+                }).onfinish = () => {
+                    if (powerupElement.parentNode) {
+                        gameContainer.removeChild(powerupElement);
+                    }
+                };
+            }
+        }
+
+        function activateFreezeEffect() {
+            // Clear any existing freeze effect
+            if (freezeTimeout) {
+                clearTimeout(freezeTimeout);
+            }
+            
+            // Add freeze visual effect if not already present
+            let freezeEffect = document.querySelector('.freeze-effect');
+            if (!freezeEffect) {
+                freezeEffect = document.createElement('div');
+                freezeEffect.className = 'freeze-effect';
+                gameContainer.appendChild(freezeEffect);
+            }
+            
+            isFrozen = true;
+            
+            // Show achievement notification
+            showAchievementNotification('Dondurma!', '❄️ Tüm balonlar yavaşladı');
+            
+            // Set timeout to remove freeze effect
+            freezeTimeout = setTimeout(() => {
+                isFrozen = false;
+                if (freezeEffect && freezeEffect.parentNode) {
+                    freezeEffect.animate([
+                        { opacity: 0.3 },
+                        { opacity: 0 }
+                    ], {
+                        duration: 500,
+                        easing: 'ease-out'
+                    }).onfinish = () => {
+                        if (freezeEffect.parentNode) {
+                            gameContainer.removeChild(freezeEffect);
+                        }
+                    };
+                }
+            }, 5000);
+        }
+
+        function activateMultiplier() {
+            pointMultiplier = 2;
+            multiplierDisplay.classList.remove('hidden');
+            multiplierValue.textContent = pointMultiplier;
+            
+            // Show achievement notification
+            showAchievementNotification('Çarpan!', '2️⃣ Puanlar 2 katına çıktı');
+            
+            // Reset multiplier after some time
+            setTimeout(() => {
+                pointMultiplier = 1;
+                multiplierDisplay.classList.add('hidden');
+            }, 10000);
+        }
+
+        function addExtraTime() {
+            const extraTime = 10;
+            timeLeft += extraTime;
+            timeElement.textContent = timeLeft;
+            
+            // Show achievement notification
+            showAchievementNotification('Ekstra Süre!', `⏱️ +${extraTime} saniye eklendi`);
+            
+            // Update timer bar
+            updateTimerBar();
+        }
+
+        function clearAllBombs() {
+            let bombsCleared = 0;
+            
+            bubbles.forEach(bubble => {
+                if (bubble.element.dataset.type === 'bomb' && bubble.element.parentNode) {
+                    // Create explosion effect
+                    const bubbleRect = bubble.element.getBoundingClientRect();
+                    const centerX = bubbleRect.left + bubbleRect.width / 2;
+                    const centerY = bubbleRect.top + bubbleRect.height / 2;
+                    
+                    const explosionEffect = document.createElement('div');
+                    explosionEffect.style.position = 'absolute';
+                    explosionEffect.style.left = `${centerX}px`;
+                    explosionEffect.style.top = `${centerY}px`;
+                    explosionEffect.style.width = '0';
+                    explosionEffect.style.height = '0';
+                    explosionEffect.style.borderRadius = '50%';
+                    explosionEffect.style.background = 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 70%, rgba(255,255,255,0) 100%)';
+                    explosionEffect.style.transform = 'translate(-50%, -50%)';
+                    explosionEffect.style.zIndex = '4';
+                    explosionEffect.style.pointerEvents = 'none';
+                    
+                    gameContainer.appendChild(explosionEffect);
+                    
+                    explosionEffect.animate([
+                        { width: '0', height: '0', opacity: 1 },
+                        { width: '100px', height: '100px', opacity: 0 }
+                    ], {
+                        duration: 500,
+                        easing: 'ease-out'
+                    }).onfinish = () => {
+                        if (explosionEffect.parentNode) {
+                            gameContainer.removeChild(explosionEffect);
+                        }
+                    };
+                    
+                    // Remove bomb
+                    gameContainer.removeChild(bubble.element);
+                    bombsCleared++;
+                }
+            });
+            
+            // Filter out removed bombs
+            bubbles = bubbles.filter(bubble => bubble.element.dataset.type !== 'bomb' || !bubble.element.parentNode);
+            
+            // Show achievement notification
+            if (bombsCleared > 0) {
+                showAchievementNotification('Bombalar Temizlendi!', `🧨 ${bombsCleared} bomba temizlendi`);
+            } else {
+                showAchievementNotification('Bomba Yok!', '🧨 Hiç bomba bulunamadı');
+            }
+        }
+
+        function updateCombo() {
+            // Clear existing combo timer
+            if (comboTimer) {
+                clearTimeout(comboTimer);
+            }
+            
+            comboCount++;
+            
+            // Update highest combo
+            if (comboCount > highestCombo) {
+                highestCombo = comboCount;
+            }
+            
+            // Check for first combo achievement
+            if (comboCount >= 3 && !achievements.find(a => a.id === 'first-combo').unlocked) {
+                unlockAchievement('first-combo');
+            }
+            
+            // Check for combo master achievement
+            if (comboCount >= 10 && !achievements.find(a => a.id === 'combo-master').unlocked) {
+                unlockAchievement('combo-master');
+            }
+            
+            // Show combo text if combo is at least 3
+            if (comboCount >= 3) {
+                showComboText();
+                totalCombos++;
+            }
+            
+            // Reset combo after a short time
+            comboTimer = setTimeout(() => {
+                comboCount = 0;
+            }, 1500);
+        }
+
+        function showComboText() {
+            const comboText = document.createElement('div');
+            comboText.className = 'combo-text';
+            comboText.textContent = `${comboCount}x Kombo!`;
+            comboText.style.fontSize = `${Math.min(24 + comboCount * 2, 48)}px`;
+            
+            // Random position on screen
+            const x = getRandomNumber(100, window.innerWidth - 200);
+            const y = getRandomNumber(100, window.innerHeight - 200);
+            
+            comboText.style.left = `${x}px`;
+            comboText.style.top = `${y}px`;
+            
+            gameContainer.appendChild(comboText);
+            
+            // Animate combo text
+            comboText.animate([
+                { transform: 'scale(0.5)', opacity: 0 },
+                { transform: 'scale(1.2)', opacity: 1, offset: 0.2 },
+                { transform: 'scale(1)', opacity: 1, offset: 0.8 },
+                { transform: 'scale(1.2)', opacity: 0 }
+            ], {
+                duration: 1000,
+                easing: 'ease-out'
+            }).onfinish = () => {
+                if (comboText.parentNode) {
+                    gameContainer.removeChild(comboText);
+                }
+            };
+        }
+
+        function updateScore(points) {
+            score += points;
+            if (score < 0) score = 0;
+            scoreElement.textContent = score;
+            
+            // Check for level up
+            const newLevel = Math.floor(score / 1000) + 1;
+            if (newLevel > level) {
+                levelUp(newLevel);
+            }
+        }
+
+        function levelUp(newLevel) {
+            level = newLevel;
+            levelElement.textContent = level;
+            
+            // Increase difficulty
+            bubbleSpeed += 0.2;
+            bubbleFrequency = Math.max(300, bubbleFrequency - 50);
+            
+            // Check for level 5 achievement
+            if (level >= 5 && !achievements.find(a => a.id === 'level-5').unlocked) {
+                unlockAchievement('level-5');
+            }
+            
+            // Show level up notification
+            const levelUpNotification = document.createElement('div');
+            levelUpNotification.className = 'level-up';
+            levelUpNotification.textContent = `Seviye ${level}!`;
+            
+            gameContainer.appendChild(levelUpNotification);
+            
+            // Remove notification after animation completes
+            setTimeout(() => {
+                if (levelUpNotification.parentNode) {
+                    gameContainer.removeChild(levelUpNotification);
+                }
+            }, 2000);
+            
+            // Add some time as a reward
+            timeLeft += 5;
+            timeElement.textContent = timeLeft;
+            updateTimerBar();
+        }
+
+        function unlockAchievement(achievementId) {
+            const achievement = achievements.find(a => a.id === achievementId);
+            if (achievement && !achievement.unlocked) {
+                achievement.unlocked = true;
+                
+                // Show achievement notification
+                const achievementElement = document.createElement('div');
+                achievementElement.className = 'achievement';
+                achievementElement.innerHTML = `
+                    <div class="text-2xl">${achievement.emoji}</div>
+                    <div>
+                        <div class="font-bold">${achievement.title}</div>
+                        <div class="text-sm opacity-80">${achievement.description}</div>
+                    </div>
+                `;
+                
+                gameContainer.appendChild(achievementElement);
+                
+                // Remove achievement notification after animation completes
+                setTimeout(() => {
+                    if (achievementElement.parentNode) {
+                        gameContainer.removeChild(achievementElement);
+                    }
+                }, 4000);
+            }
+        }
+
+        function showAchievementNotification(title, description) {
+            const notificationElement = document.createElement('div');
+            notificationElement.className = 'achievement';
+            notificationElement.innerHTML = `
+                <div>
+                    <div class="font-bold">${title}</div>
+                    <div class="text-sm opacity-80">${description}</div>
+                </div>
+            `;
+            
+            gameContainer.appendChild(notificationElement);
+            
+            // Remove notification after animation completes
+            setTimeout(() => {
+                if (notificationElement.parentNode) {
+                    gameContainer.removeChild(notificationElement);
+                }
+            }, 4000);
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timeElement.textContent = timeLeft;
+            updateTimerBar();
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function updateTimerBar() {
+            const percentage = (timeLeft / 60) * 100;
+            timerBar.style.width = `${percentage}%`;
+            
+            if (timeLeft <= 10) {
+                timerBar.style.background = '#ef4444';
+            } else {
+                timerBar.style.background = '#10b981';
+            }
+        }
+
+        function login() {
+            let inputUsername = usernameInput.value.trim();
+            
+            if (inputUsername === '') {
+                inputUsername = 'Misafir';
+            }
+            
+            // Limit username length
+            if (inputUsername.length > 20) {
+                inputUsername = inputUsername.substring(0, 20);
+            }
+            
+            username = inputUsername;
+            currentUsername.textContent = username;
+            
+            // Save username to local storage
+            localStorage.setItem('bubbleGameUsername', username);
+            
+            // Show username display
+            usernameDisplay.classList.remove('hidden');
+            
+            // Hide login screen, show start screen
+            loginScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        }
+
+        function startGame() {
+            isGameRunning = true;
+            score = 0;
+            level = 1;
+            timeLeft = 60;
+            bubbleSpeed = 1;
+            bubbleFrequency = 800;
+            pointMultiplier = 1;
+            comboCount = 0;
+            isFrozen = false;
+            
+            // Reset stats
+            totalBubblesPopped = 0;
+            totalCombos = 0;
+            highestCombo = 0;
+            powerupsUsed = 0;
+            stats.goldenBubblePopped = 0;
+            
+            // Reset achievements
+            achievements.forEach(a => a.unlocked = false);
+            
+            // Update UI
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            timeElement.textContent = timeLeft;
+            timerBar.style.width = '100%';
+            timerBar.style.background = '#10b981';
+            multiplierDisplay.classList.add('hidden');
+            
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            scoreboardScreen.classList.add('hidden');
+            
+            // Clear any existing freeze effect
+            const freezeEffect = document.querySelector('.freeze-effect');
+            if (freezeEffect && freezeEffect.parentNode) {
+                gameContainer.removeChild(freezeEffect);
+            }
+            
+            // Clear any existing bubbles and powerups
+            document.querySelectorAll('.bubble, .powerup, .particle, .combo-text, .achievement, .level-up').forEach(el => {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+            bubbles = [];
+            
+            // Start creating bubbles
+            gameInterval = setInterval(() => {
+                const count = getRandomNumber(1, Math.min(3, Math.floor(level / 2) + 1));
+                for (let i = 0; i < count; i++) {
+                    createBubble();
+                }
+            }, bubbleFrequency);
+            
+            // Start timer
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function endGame() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            
+            // Update final stats
+            finalScoreElement.textContent = score;
+            finalLevelElement.textContent = level;
+            statsBubbles.textContent = totalBubblesPopped;
+            statsCombos.textContent = totalCombos;
+            statsHighestCombo.textContent = highestCombo;
+            statsPowerups.textContent = powerupsUsed;
+            
+            // Save high score
+            saveHighScore(score, level);
+            
+            gameOverScreen.classList.remove('hidden');
+            
+            // Clear any existing bubbles and powerups
+            document.querySelectorAll('.bubble, .powerup, .particle, .combo-text, .achievement, .level-up, .freeze-effect').forEach(el => {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+            bubbles = [];
+        }
+
+        function showScoreboard() {
+            updateScoreboard();
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            scoreboardScreen.classList.remove('hidden');
+        }
+
+        // Helper function to adjust color brightness
+        function adjustColor(color, amount) {
+            return '#' + color.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+        }
+
+        // Event listeners
+        loginButton.addEventListener('click', login);
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+        
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        showScoreboardButton.addEventListener('click', showScoreboard);
+        viewScoreboardButton.addEventListener('click', showScoreboard);
+        backToMenuButton.addEventListener('click', () => {
+            scoreboardScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+        
+        // Tab switching
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (isGameRunning) {
+                bubbles.forEach(bubble => {
+                    if (bubble.element.parentNode) {
+                        if (parseInt(bubble.element.style.left) > window.innerWidth - bubble.size) {
+                            bubble.element.style.left = `${window.innerWidth - bubble.size}px`;
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Check for saved username
+        const savedUsername = localStorage.getItem('bubbleGameUsername');
+        if (savedUsername) {
+            usernameInput.value = savedUsername;
+        }
+    </script>
+</body>
+</html>
